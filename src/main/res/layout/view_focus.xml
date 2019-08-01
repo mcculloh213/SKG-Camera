@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="72dp"
+    android:layout_height="72dp">
+    <ImageView
+        android:id="@+id/focus"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:src="@drawable/ic_focus"
+        android:contentDescription="Focus Target"
+        android:layout_centerInParent="true"
+    />
+</RelativeLayout>
