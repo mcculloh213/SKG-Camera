@@ -15,14 +15,9 @@ import android.webkit.MimeTypeMap
 import androidx.camera.core.*
 import androidx.core.math.MathUtils.clamp
 import androidx.lifecycle.LifecycleOwner
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.*
 import ktx.sovereign.camera.contract.CameraHolder
-import ktx.sovereign.camera.extension.areDimensionsSwapped
-import ktx.sovereign.camera.extension.getOptimalSize
-import ktx.sovereign.camera.extension.getPreviewSize
+import ktx.sovereign.camera.extension.*
 import ktx.sovereign.camera.util.AutoFitPreviewBuilder
 import ktx.sovereign.camera.view.AutoFitTextureView
 import ktx.sovereign.database.provider.MediaProvider
@@ -36,6 +31,10 @@ class CameraXHolder : CameraHolder {
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisor
 
+    override val activeRegion: Rect
+        get() = cropRegion
+            ?: manager?.getActiveArraySizeFor(lens)
+            ?: Rect()
     private var manager: CameraManager? = null
     private var surface: AutoFitTextureView? = null
     private var displayId: Int = -1
@@ -63,25 +62,25 @@ class CameraXHolder : CameraHolder {
     override fun startCamera(lifecycle: LifecycleOwner) {
         val m = manager ?: throw RuntimeException("ʕ•ᴥ•ʔ")
         val s = surface ?: throw RuntimeException("CameraX Holder lost reference to TextureView.")
-        val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
-            ?: throw RuntimeException("Whoops, no Camera ID! ʕ•ᴥ•ʔ")
-        val characteristics = m.getCameraCharacteristics(id)
-        val realSize = Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(it) }
-        val displaySize = Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getSize(it) }
-        val displayRotation = (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
+//        val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
+//            ?: throw RuntimeException("Whoops, no Camera ID! ʕ•ᴥ•ʔ")
+        val info = m.getCameraCharacteristicFor(lens)
+        val realSize = s.getRealSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(it) }
+        val displaySize = s.getSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getSize(it) }
+        val displayRotation = s.getDisplayRotation() // (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
         val aspectRatio = Rational(realSize.x, realSize.y)
 
-        val metrics = DisplayMetrics().also { s.display.getRealMetrics(it) }
+//        val metrics = DisplayMetrics().also { s.display.getRealMetrics(it) }
 //        val aspectRatio = Rational(metrics.widthPixels, metrics.heightPixels)
 
-        val maxSize = characteristics.getPreviewSize(aspectRatio)
-        val previewSize = if (characteristics.areDimensionsSwapped(displayRotation)) {
-            characteristics.getOptimalSize(s.height, s.width, displaySize.y, displaySize.x, maxSize)
+        val maxSize = info.characteristics.getPreviewSize(aspectRatio)
+        val previewSize = if (info.characteristics.areDimensionsSwapped(displayRotation)) {
+            info.characteristics.getOptimalSize(s.height, s.width, displaySize.y, displaySize.x, maxSize)
         } else {
-            characteristics.getOptimalSize(s.width, s.height, displaySize.x, displaySize.y, maxSize)
+            info.characteristics.getOptimalSize(s.width, s.height, displaySize.x, displaySize.y, maxSize)
         }
 
-        Log.d("Aspect Ratio", "Preview Size: $previewSize")
+        Log.i("Aspect Ratio", "Size: $aspectRatio\tMetrics: ${s.getAspectRatio()}")
 
         val config = PreviewConfig.Builder()
             .setLensFacing(lens)
@@ -114,27 +113,28 @@ class CameraXHolder : CameraHolder {
             setTransform(matrix)
         }
     }
-    override fun setZoom(scale: Float) {
-        val m = manager ?: throw RuntimeException("ʕ•ᴥ•ʔ")
+    override suspend fun setZoom(scale: Float): Rect = withContext(coroutineContext) {
+        val m = manager ?: throw RuntimeException("No camera manager. ʕ•ᴥ•ʔ")
         val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
             ?: throw RuntimeException("Whoops, no Camera ID! ʕ•ᴥ•ʔ")
         val p = preview ?: throw RuntimeException("CameraX Holder does not contain a Preview. Relax, have a koala ʕ•ᴥ•ʔ")
         val characteristics = m.getCameraCharacteristics(id)
 
-        val activeRect = characteristics.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: return
-        Log.d("Zoom", "Active Rect: $activeRect")
+        val activeRect = characteristics.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: throw RuntimeException("Unable to get active array. ʕ•ᴥ•ʔ")
+        Log.i("Zoom", "Active Rect: $activeRect")
         val maxDigitalZoom = characteristics.get<Float>(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f
-        Log.d("Zoom", "Max Digital Zoom: $maxDigitalZoom")
+        Log.i("Zoom", "Max Digital Zoom: $maxDigitalZoom")
         val zoomTo = clamp(scale, 1.0f, maxDigitalZoom * 10.0f)
-
+        Log.i("Zoom", "Clamped: $zoomTo")
         val centerX = activeRect.centerX()
         val centerY = activeRect.centerY()
         val dX = ((0.5f * activeRect.width()) / zoomTo).roundToInt()
         val dY = ((0.5f * activeRect.height())/ zoomTo).roundToInt()
 
         cropRegion = Rect(centerX - dX, centerY - dY, centerX + dX, centerY + dY)
-        Log.d("Zoom", "Crop Region: $cropRegion")
+        Log.i("Zoom", "Crop Region: $cropRegion")
         p.zoom(cropRegion)
+        cropRegion!!
     }
     override fun capture() {
         capture?.let {
@@ -145,7 +145,7 @@ class CameraXHolder : CameraHolder {
             }
             it.takePicture(file, object : ImageCapture.OnImageSavedListener {
                 override fun onImageSaved(file: File) {
-                    Log.d("ImageCapture", "Capture succeeded! ${file.absolutePath}")
+                    Log.i("ImageCapture", "Capture succeeded! ${file.absolutePath}")
                     val mime = MimeTypeMap.getSingleton().getExtensionFromMimeType(file.extension)
                     MediaScannerConnection.scanFile(s.context, arrayOf(file.absolutePath), arrayOf(mime), null)
                 }

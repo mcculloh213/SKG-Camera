@@ -1,8 +1,14 @@
 package ktx.sovereign.camera.view
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
 import android.util.AttributeSet
+import android.util.SparseArray
+import android.util.SparseIntArray
 import android.view.TextureView
+import kotlin.random.Random
 
 class AutoFitTextureView @JvmOverloads constructor(
     context: Context,
@@ -11,6 +17,13 @@ class AutoFitTextureView @JvmOverloads constructor(
 ) : TextureView(context, attrs, defStyle) {
     private var ratioWidth: Int = 0
     private var ratioHeight: Int = 0
+
+    private val paint: Paint = Paint().also {
+        it.style = Paint.Style.STROKE
+        it.strokeWidth = 5f
+    }
+    private val rects: SparseArray<Rect> = SparseArray()
+    private val colors: SparseIntArray = SparseIntArray()
 
     fun setAspectRatio(width: Int, height: Int) {
         if (width < 0 || height < 0) {
@@ -35,4 +48,6 @@ class AutoFitTextureView @JvmOverloads constructor(
             }
         }
     }
+    private fun nextColor(): Int =
+        Color.argb(255, Random.nextInt(256), Random.nextInt(256), Random.nextInt(256))
 }

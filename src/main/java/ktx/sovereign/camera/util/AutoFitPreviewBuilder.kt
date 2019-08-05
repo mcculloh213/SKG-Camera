@@ -8,6 +8,7 @@ import android.util.Size
 import android.view.*
 import androidx.camera.core.Preview
 import androidx.camera.core.PreviewConfig
+import ktx.sovereign.hmt.extension.isHMT
 import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.math.round
@@ -122,18 +123,23 @@ class AutoFitPreviewBuilder private constructor(config: PreviewConfig, surfaceRe
 
         val scaledWidth: Int
         val scaledHeight: Int
-        if (viewFinderDimens.width > viewFinderDimens.height) {
-            Log.d("AutoFitPreview", "Surface: ${viewFinderDimens.width}x${viewFinderDimens.height}")
-            scaledWidth = viewFinderDimens.width
-            scaledHeight = (viewFinderDimens.width * bufferRatio).roundToInt()
-        } else {
-            scaledHeight = viewFinderDimens.height
-            scaledWidth = (viewFinderDimens.height * bufferRatio).roundToInt()
+        when {
+            isHMT() -> {
+                scaledWidth = viewFinderDimens.width
+                scaledHeight = (viewFinderDimens.width * bufferRatio).roundToInt()
+            }
+            viewFinderDimens.width > viewFinderDimens.height -> {
+                scaledHeight = viewFinderDimens.width
+                scaledWidth = (viewFinderDimens.width * bufferRatio).roundToInt()
+            }
+            else -> {
+                scaledHeight = viewFinderDimens.height
+                scaledWidth = (viewFinderDimens.height * bufferRatio).roundToInt()
+            }
         }
-        Log.d("AutoFitPreview", "Scaled Dimens: $scaledWidth x $scaledHeight")
+
         val scaleX = scaledWidth / viewFinderDimens.width.toFloat()
         val scaleY = scaledHeight / viewFinderDimens.height.toFloat()
-        Log.d("AutoFitPreview", "Post Scale: $scaleX x $scaleY")
 
         matrix.preScale(scaleX, scaleY, centerX, centerY)
 
