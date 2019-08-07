@@ -15,7 +15,8 @@ interface CameraHolder : CoroutineScope {
     fun startCamera()
     fun startCamera(lifecycle: LifecycleOwner)
     fun updateTransform()
-    suspend fun setZoom(scale: Float): Rect
+    fun setZoom(scale: Float)
+    suspend fun setZoomAsync(scale: Float): Rect
     fun capture()
     fun closeCamera()
 }

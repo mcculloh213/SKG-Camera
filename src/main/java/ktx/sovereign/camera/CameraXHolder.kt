@@ -63,7 +63,7 @@ class CameraXHolder : CameraHolder {
         val m = manager ?: throw RuntimeException("ʕ•ᴥ•ʔ")
         val s = surface ?: throw RuntimeException("CameraX Holder lost reference to TextureView.")
 //        val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
-//            ?: throw RuntimeException("Whoops, no Camera ID! ʕ•ᴥ•ʔ")
+//            ?: throw RuntimeException("Whoops, no Camera ID!")
         val info = m.getCameraCharacteristicFor(lens)
         val realSize = s.getRealSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(it) }
         val displaySize = s.getSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getSize(it) }
@@ -113,14 +113,36 @@ class CameraXHolder : CameraHolder {
             setTransform(matrix)
         }
     }
-    override suspend fun setZoom(scale: Float): Rect = withContext(coroutineContext) {
-        val m = manager ?: throw RuntimeException("No camera manager. ʕ•ᴥ•ʔ")
+    override fun setZoom(scale: Float) {
+        val m = manager ?: throw RuntimeException("No camera manager.")
         val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
-            ?: throw RuntimeException("Whoops, no Camera ID! ʕ•ᴥ•ʔ")
-        val p = preview ?: throw RuntimeException("CameraX Holder does not contain a Preview. Relax, have a koala ʕ•ᴥ•ʔ")
+            ?: throw RuntimeException("Whoops, no Camera ID!")
+        val p = preview ?: throw RuntimeException("CameraX Holder does not contain a Preview.")
         val characteristics = m.getCameraCharacteristics(id)
 
-        val activeRect = characteristics.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: throw RuntimeException("Unable to get active array. ʕ•ᴥ•ʔ")
+        val activeRect = characteristics.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: throw RuntimeException("Unable to get active array.")
+        Log.i("Zoom", "Active Rect: $activeRect")
+        val maxDigitalZoom = characteristics.get<Float>(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f
+        Log.i("Zoom", "Max Digital Zoom: $maxDigitalZoom")
+        val zoomTo = clamp(scale, 1.0f, maxDigitalZoom * 10.0f)
+        Log.i("Zoom", "Clamped: $zoomTo")
+        val centerX = activeRect.centerX()
+        val centerY = activeRect.centerY()
+        val dX = ((0.5f * activeRect.width()) / zoomTo).roundToInt()
+        val dY = ((0.5f * activeRect.height())/ zoomTo).roundToInt()
+
+        cropRegion = Rect(centerX - dX, centerY - dY, centerX + dX, centerY + dY)
+        Log.i("Zoom", "Crop Region: $cropRegion")
+        p.zoom(cropRegion)
+    }
+    override suspend fun setZoomAsync(scale: Float): Rect = withContext(coroutineContext) {
+        val m = manager ?: throw RuntimeException("No camera manager.")
+        val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
+            ?: throw RuntimeException("Whoops, no Camera ID!")
+        val p = preview ?: throw RuntimeException("CameraX Holder does not contain a Preview")
+        val characteristics = m.getCameraCharacteristics(id)
+
+        val activeRect = characteristics.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: throw RuntimeException("Unable to get active array.")
         Log.i("Zoom", "Active Rect: $activeRect")
         val maxDigitalZoom = characteristics.get<Float>(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f
         Log.i("Zoom", "Max Digital Zoom: $maxDigitalZoom")
