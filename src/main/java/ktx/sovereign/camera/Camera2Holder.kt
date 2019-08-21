@@ -56,6 +56,7 @@ class Camera2Holder : CameraHolder, LifecycleObserver {
     private var displayId: Int = -1
     private var captureSession: CameraCaptureSession? = null
     private var cameraDevice: CameraDevice? = null
+    private var isRepeating: Boolean = false
     private lateinit var renderer: GLESCameraRenderer
     private lateinit var manager: CameraManager
     private lateinit var cameraId: String
@@ -113,29 +114,43 @@ class Camera2Holder : CameraHolder, LifecycleObserver {
         s.setTransform(configureTransform(s.width, s.height, s.getDisplayRotation()))
     }
     override fun setZoom(scale: Float) {
-        val c = manager.getCameraCharacteristicFor(CameraCharacteristics.LENS_FACING_BACK).characteristics
-        val activeRect = c.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: throw RuntimeException()
-        val maxDigitalZoom = c.get<Float>(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM) ?: 1.0f
-        val zoomTo = clamp(scale, 1.0f, maxDigitalZoom * 10.0f)
-        val cX = activeRect.centerX()
-        val cY = activeRect.centerY()
-        val dX = ((0.5f * activeRect.width()) / zoomTo).roundToInt()
-        val dY = ((0.5f * activeRect.height()) / zoomTo).roundToInt()
+        if (isRepeating) {
+            val c = manager.getCameraCharacteristicFor(CameraCharacteristics.LENS_FACING_BACK).characteristics
+            val activeRect = c.get<Rect>(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+                    ?: throw RuntimeException()
+            val maxDigitalZoom = c.get<Float>(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM)
+                    ?: 1.0f
+            val zoomTo = clamp(scale, 1.0f, maxDigitalZoom * 10.0f)
+            val cX = activeRect.centerX()
+            val cY = activeRect.centerY()
+            val dX = ((0.5f * activeRect.width()) / zoomTo).roundToInt()
+            val dY = ((0.5f * activeRect.height()) / zoomTo).roundToInt()
 
-        val region = Rect(cX - dX, cY - dY, cX + dX, cY + dY).also {
-            cropRegion = it
+            val region = Rect(cX - dX, cY - dY, cX + dX, cY + dY).also {
+                cropRegion = it
+            }
+            previewRequest = previewRequestBuilder.apply {
+                set(CaptureRequest.SCALER_CROP_REGION, region)
+            }.build()
+            captureSession?.setRepeatingRequest(previewRequest, captureCallback, handler)
         }
-        previewRequest = previewRequestBuilder.apply {
-            set(CaptureRequest.SCALER_CROP_REGION, region)
-        }.build()
-        captureSession?.setRepeatingRequest(previewRequest, captureCallback, handler)
     }
     override suspend fun setZoomAsync(scale: Float): Rect = withContext(coroutineContext) {
         setZoom(scale)
         Rect()
     }
-    override fun toggleFreeze() { }
-    override fun toggleFreeze(lifecycle: LifecycleOwner) { }
+    override fun toggleFreeze() {
+        isRepeating = if (isRepeating) {
+            captureSession?.stopRepeating()
+            false
+        } else {
+            captureSession?.setRepeatingRequest(previewRequest, captureCallback, handler)
+            true
+        }
+    }
+    override fun toggleFreeze(lifecycle: LifecycleOwner) {
+        toggleFreeze()
+    }
     override fun capture() { }
     @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
     override fun closeCamera() {
@@ -204,6 +219,7 @@ class Camera2Holder : CameraHolder, LifecycleObserver {
                             previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                             previewRequest = previewRequestBuilder.build()
                             captureSession?.setRepeatingRequest(previewRequest, captureCallback, handler)
+                            isRepeating = true
                         } catch (ex: CameraAccessException) {
                             Log.e("Session", ex.message ?: "Failed to access camera, I guess?")
                         }
