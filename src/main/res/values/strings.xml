@@ -1,3 +1,9 @@
 <resources>
-    <string name="app_name">Camera</string>
+    <string name="hf_zoom_in">hf_no_number|Zoom In</string>
+    <string name="hf_zoom_out">hf_no_number|Zoom Out</string>
+    <string name="hf_take_picture">hf_no_number|Take Picture</string>
+    <string name="hf_freeze_preview">hf_no_number|Freeze Preview</string>
+    <string name="hf_no_filter">hf_no_number|No Filter</string>
+    <string name="hf_edge_detection">hf_no_number|Edge Detection</string>
+    <string name="hf_image_negative">hf_no_number|Image Negative</string>
 </resources>

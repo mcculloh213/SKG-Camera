@@ -18,6 +18,7 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.*
 import ktx.sovereign.camera.contract.CameraHolder
 import ktx.sovereign.camera.extension.*
+import ktx.sovereign.camera.renderer.GLESCameraRenderer
 import ktx.sovereign.camera.util.AutoFitPreviewBuilder
 import ktx.sovereign.camera.view.AutoFitTextureView
 import ktx.sovereign.database.provider.MediaProvider
@@ -49,6 +50,8 @@ class CameraXHolder : CameraHolder {
     private var capture: ImageCapture? = null
     private var analyzer: ImageAnalysis? = null
 
+    private var isPreviewBound: Boolean = false
+
     override fun createSurface(context: Context, parent: ViewGroup): View? {
         manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager?
         val inflater = LayoutInflater.from(context)
@@ -58,7 +61,9 @@ class CameraXHolder : CameraHolder {
     override fun bindDisplayId(displayId: Int) {
         this@CameraXHolder.displayId = displayId
     }
-    override fun startCamera() { }
+    override fun setRenderer(renderer: GLESCameraRenderer?) { }
+    override fun startCamera() {
+    }
     override fun startCamera(lifecycle: LifecycleOwner) {
         val m = manager ?: throw RuntimeException("ʕ•ᴥ•ʔ")
         val s = surface ?: throw RuntimeException("CameraX Holder lost reference to TextureView.")
@@ -176,6 +181,16 @@ class CameraXHolder : CameraHolder {
                     cause?.printStackTrace()
                 }
             }, meta)
+        }
+    }
+    override fun toggleFreeze() { }
+    override fun toggleFreeze(lifecycle: LifecycleOwner) {
+        Log.i("Freeze", "Is the preview bound? $isPreviewBound")
+        if (isPreviewBound) {
+            CameraX.unbindAll()
+            isPreviewBound = false
+        } else {
+            startCamera(lifecycle)
         }
     }
     override fun closeCamera() {

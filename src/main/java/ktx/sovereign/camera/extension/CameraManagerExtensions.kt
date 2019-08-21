@@ -14,9 +14,20 @@ fun CameraManager.getCameraCharacteristicFor(lens: CameraX.LensFacing): LensInfo
     } ?: Build.UNKNOWN
     return LensInfo(lens, id, getCameraCharacteristics(id))
 }
-fun CameraManager.getLensFacingCharacteristic(which: CameraX.LensFacing): Int = when (which) {
+fun CameraManager.getCameraCharacteristicFor(lens: Int): LensInfo {
+    val id = cameraIdList.firstOrNull {
+        getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lens
+    } ?: Build.UNKNOWN
+    return LensInfo(getLensFacingCharacteristic(lens), id, getCameraCharacteristics(id))
+}
+private fun getLensFacingCharacteristic(which: CameraX.LensFacing): Int = when (which) {
     CameraX.LensFacing.FRONT -> CameraCharacteristics.LENS_FACING_FRONT
     CameraX.LensFacing.BACK -> CameraCharacteristics.LENS_FACING_BACK
+}
+private fun getLensFacingCharacteristic(which: Int): CameraX.LensFacing = when (which) {
+    CameraCharacteristics.LENS_FACING_FRONT -> CameraX.LensFacing.FRONT
+    CameraCharacteristics.LENS_FACING_BACK -> CameraX.LensFacing.BACK
+    else -> throw IllegalArgumentException("$which is not LENS_FACING_FRONT or LENS_FACING_BACK")
 }
 fun CameraManager.getActiveArraySizeFor(lens: CameraX.LensFacing): Rect {
     val info = getCameraCharacteristicFor(lens)

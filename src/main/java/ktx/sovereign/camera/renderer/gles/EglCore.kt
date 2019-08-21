@@ -70,7 +70,7 @@ class EglCore @JvmOverloads constructor(sharedContext: EGLContext? = null, flags
                     EGL14.EGL_CONTEXT_CLIENT_VERSION, 3,
                     EGL14.EGL_NONE
                 )
-                val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attrib3_list, 0)
+                val context = EGL14.eglCreateContext(eglDisplay, config, ctx, attrib3_list, 0)
                 if (EGL14.eglGetError() == EGL14.EGL_SUCCESS) {
                     eglConfig = config
                     eglContext = context
@@ -86,7 +86,7 @@ class EglCore @JvmOverloads constructor(sharedContext: EGLContext? = null, flags
                     EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
                     EGL14.EGL_NONE
                 )
-                val context = EGL14.eglCreateContext(eglDisplay, config, sharedContext, attrib2_list, 0)
+                val context = EGL14.eglCreateContext(eglDisplay, config, ctx, attrib2_list, 0)
                 checkEglError("eglCreateContext")
                 eglConfig = config
                 eglContext = context
@@ -258,10 +258,11 @@ class EglCore @JvmOverloads constructor(sharedContext: EGLContext? = null, flags
             EGL14.EGL_GREEN_SIZE, 8,
             EGL14.EGL_BLUE_SIZE, 8,
             EGL14.EGL_ALPHA_SIZE, 8,
-            EGL14.EGL_DEPTH_SIZE, 16,
-            EGL14.EGL_STENCIL_SIZE, 8,
+//            EGL14.EGL_DEPTH_SIZE, 16,
+//            EGL14.EGL_STENCIL_SIZE, 8,
             EGL14.EGL_RENDERABLE_TYPE, renderableType,
-            EGL14.EGL_NONE, 0 , EGL14.EGL_NONE          // placeholder for recordable [@-3]
+            EGL14.EGL_NONE, 0,      // placeholder for recordable [@-3]
+            EGL14.EGL_NONE
         )
 
         if ((flags and FLAG_RECORDABLE) != 0) {

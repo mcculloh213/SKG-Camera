@@ -1,16 +1,25 @@
 @file:JvmName("CameraCharacteristicsUtils")
 package ktx.sovereign.camera.extension
 
+import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCharacteristics
 import android.util.Rational
 import android.util.Size
 import android.view.Surface
 import ktx.sovereign.camera.util.RectangularAreaComparator
+import java.util.*
+import kotlin.collections.ArrayList
 
 private const val MAX_PREVIEW_WIDTH = 1920
 private const val MAX_PREVIEW_HEIGHT = 1080
 
+fun CameraCharacteristics.isFlashSupported(): Boolean =
+    get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+fun CameraCharacteristics.getLargestOutputSize(format: Int = ImageFormat.JPEG): Size {
+    val map = get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP) ?: return Size(0, 0)
+    return Collections.max(listOf(*map.getOutputSizes(format)), RectangularAreaComparator())
+}
 fun CameraCharacteristics.getPreviewSize(aspectRatio: Rational): Size {
     val sizes = get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         ?.getOutputSizes(SurfaceTexture::class.java)

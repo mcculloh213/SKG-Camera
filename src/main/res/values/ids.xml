@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="filter_blue_orange" type="id"/>
+    <item name="filter_default" type="id"/>
+    <item name="filter_edge_detection" type="id"/>
+    <item name="filter_touch_color" type="id"/>
+</resources>
