@@ -2,14 +2,15 @@ package ktx.sovereign.camera
 
 import android.content.Context
 import android.graphics.Matrix
-import android.graphics.Point
 import android.graphics.Rect
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.MediaScannerConnection
-import android.util.DisplayMetrics
+import android.os.Handler
+import android.os.HandlerThread
 import android.util.Log
 import android.util.Rational
+import android.util.Size
 import android.view.*
 import android.webkit.MimeTypeMap
 import androidx.camera.core.*
@@ -19,6 +20,8 @@ import kotlinx.coroutines.*
 import ktx.sovereign.camera.contract.CameraHolder
 import ktx.sovereign.camera.extension.*
 import ktx.sovereign.camera.renderer.GLESCameraRenderer
+import ktx.sovereign.camera.tflite.ClassificationAnalyzer
+import ktx.sovereign.camera.tflite.classifier.Classifier
 import ktx.sovereign.camera.util.AutoFitPreviewBuilder
 import ktx.sovereign.camera.view.AutoFitTextureView
 import ktx.sovereign.database.provider.MediaProvider
@@ -32,6 +35,8 @@ class CameraXHolder : CameraHolder {
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + supervisor
 
+    override val texture: TextureView?
+        get() = surface
     override val activeRegion: Rect
         get() = cropRegion
             ?: manager?.getActiveArraySizeFor(lens)
@@ -48,10 +53,11 @@ class CameraXHolder : CameraHolder {
     private var cropRegion: Rect? = null
     private var preview: Preview? = null
     private var capture: ImageCapture? = null
-    private var analyzer: ImageAnalysis? = null
+    private var analysis: ImageAnalysis? = null
 
     private var isPreviewBound: Boolean = false
 
+    override fun setCameraStateListener(listener: CameraHolder.CameraStateListener) {}
     override fun createSurface(context: Context, parent: ViewGroup): View? {
         manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager?
         val inflater = LayoutInflater.from(context)
@@ -63,20 +69,14 @@ class CameraXHolder : CameraHolder {
     }
     override fun setRenderer(renderer: GLESCameraRenderer?) { }
     override fun startCamera() {
-    }
-    override fun startCamera(lifecycle: LifecycleOwner) {
         val m = manager ?: throw RuntimeException("ʕ•ᴥ•ʔ")
         val s = surface ?: throw RuntimeException("CameraX Holder lost reference to TextureView.")
-//        val id = m.cameraIdList.firstOrNull { m.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == lensCharacteristic }
-//            ?: throw RuntimeException("Whoops, no Camera ID!")
-        val info = m.getCameraCharacteristicFor(lens)
-        val realSize = s.getRealSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getRealSize(it) }
-        val displaySize = s.getSize() // Point().also { (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.getSize(it) }
-        val displayRotation = s.getDisplayRotation() // (s.context.getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-        val aspectRatio = Rational(realSize.x, realSize.y)
 
-//        val metrics = DisplayMetrics().also { s.display.getRealMetrics(it) }
-//        val aspectRatio = Rational(metrics.widthPixels, metrics.heightPixels)
+        val info = m.getCameraCharacteristicFor(lens)
+        val realSize = s.getRealSize()
+        val displaySize = s.getSize()
+        val displayRotation = s.getDisplayRotation()
+        val aspectRatio = Rational(realSize.x, realSize.y)
 
         val maxSize = info.characteristics.getPreviewSize(aspectRatio)
         val previewSize = if (info.characteristics.areDimensionsSwapped(displayRotation)) {
@@ -95,6 +95,16 @@ class CameraXHolder : CameraHolder {
 
         preview = AutoFitPreviewBuilder.build(config, s)
 
+//        val analysisConfig = ImageAnalysisConfig.Builder().apply {
+//            val thread = HandlerThread("ClassificationAnalysis").also { it.start() }
+//            setCallbackHandler(Handler(thread.looper))
+//            setImageReaderMode(ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
+//        }.build()
+//
+//        analysis = ImageAnalysis(analysisConfig).apply {
+//            analyzer = this@CameraXHolder.analyzer
+//        }
+
         val captureConfig = ImageCaptureConfig.Builder()
             .setLensFacing(lens)
             .setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
@@ -103,6 +113,9 @@ class CameraXHolder : CameraHolder {
             .build()
 
         capture = ImageCapture(captureConfig)
+    }
+    override fun startCamera(lifecycle: LifecycleOwner) {
+        startCamera()
         CameraX.setErrorListener({ code, message ->
             Log.e("CameraX", "Error ($code): $message")
         }, null)

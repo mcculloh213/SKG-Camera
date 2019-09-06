@@ -1,0 +1,84 @@
+def targetFolder = "src/main/assets"
+def modelFloatDownloadUrl = "http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz"
+def modelQuantDownloadUrl = "http://download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224_quant.tgz"
+def modelObjectDownloadUrl = 'http://storage.googleapis.com/download.tensorflow.org/models/tflite/coco_ssd_mobilenet_v1_1.0_quant_2018_06_29.zip'
+def localCacheFloat = "build/intermediates/mobilenet_v1_1.0_224.tgz"
+def localCacheQuant = "build/intermediates/mobilenet_v1_1.0_224_quant.tgz"
+def localCacheObject = "build/intermediates/coco_ssd_mobilenet_v1_1.0_quant_2018_06_29.zip"
+
+
+task downloadModelFloat(type: DownloadUrlTask) {
+    doFirst {
+        println "Downloading ${modelFloatDownloadUrl}"
+    }
+    sourceUrl = "${modelFloatDownloadUrl}"
+    target = file("${localCacheFloat}")
+}
+
+task downloadModelQuant(type: DownloadUrlTask) {
+    doFirst {
+        println "Downloading ${modelQuantDownloadUrl}"
+    }
+    sourceUrl = "${modelQuantDownloadUrl}"
+    target = file("${localCacheQuant}")
+}
+
+task downloadModelObject(type: DownloadUrlTask) {
+    doFirst {
+        println "Downloading ${modelObjectDownloadUrl}"
+    }
+    sourceUrl = "${modelObjectDownloadUrl}"
+    target = file("${localCacheObject}")
+}
+
+task unzipModelFloat(type: Copy, dependsOn: 'downloadModelFloat') {
+    doFirst {
+        println "Unzipping ${localCacheFloat}"
+    }
+    from tarTree("${localCacheFloat}")
+    into "${targetFolder}"
+}
+
+task unzipModelQuant(type: Copy, dependsOn: 'downloadModelQuant') {
+    doFirst {
+        println "Unzipping ${localCacheQuant}"
+    }
+    from tarTree("${localCacheQuant}")
+    into "${targetFolder}"
+}
+
+task unzipModelObject(type: Copy, dependsOn: 'downloadModelObject') {
+    doFirst {
+        println "Unzipping ${localCacheObject}"
+    }
+    from zipTree("${localCacheObject}")
+    into "${targetFolder}"
+}
+
+task cleanUnusedFiles(type: Delete, dependsOn: ['unzipModelFloat', 'unzipModelQuant', 'unzipModelObject']) {
+    delete fileTree("${targetFolder}").matching {
+        include "*.pb"
+        include "*.ckpt.*"
+        include "*.pbtxt*"
+        include "*.quant_info.*"
+        include "*.meta"
+    }
+}
+
+class DownloadUrlTask extends DefaultTask {
+    @Input
+    String sourceUrl
+
+    @OutputFile
+    File target
+
+    @TaskAction
+    void download() {
+        ant.get(src: sourceUrl, dest: target)
+    }
+}
+
+preBuild.dependsOn unzipModelFloat
+preBuild.dependsOn unzipModelQuant
+preBuild.dependsOn unzipModelObject
+preBuild.dependsOn cleanUnusedFiles

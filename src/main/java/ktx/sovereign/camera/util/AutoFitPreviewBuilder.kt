@@ -8,7 +8,6 @@ import android.util.Size
 import android.view.*
 import androidx.camera.core.Preview
 import androidx.camera.core.PreviewConfig
-import ktx.sovereign.camera.renderer.GLESCameraRenderer
 import ktx.sovereign.hmt.extension.isHMT
 import java.lang.ref.WeakReference
 import java.util.*
