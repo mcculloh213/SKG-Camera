@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#ff000000"
+    tools:context=".ui.camera.CameraFragment">
+    <FrameLayout
+        android:id="@+id/preview_frame"
+        android:layout_width="360dp"
+        android:layout_height="480dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <SurfaceView
+            android:id="@+id/preview_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#ff000000"/>
+    </FrameLayout>
+
+    <ktx.sovereign.core.view.MaterialLabel
+        android:id="@+id/label_zoom_out"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:text="Zoom Out"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <ktx.sovereign.core.view.MaterialLabel
+        android:id="@+id/label_zoom_in"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:text="Zoom In"
+        app:layout_constraintStart_toEndOf="@id/label_zoom_out"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/jpeg_capture"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/layout_margin_medium"
+        android:src="@drawable/ic_camera"
+        android:contentDescription="@string/hf_take_picture"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/slot_view"/>
+
+    <ktx.sovereign.core.view.SlotView
+        xmlns:zoom="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/slot_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/layout_margin_medium"
+        android:layout_marginBottom="@dimen/layout_margin_medium"
+        android:paddingTop="@dimen/layout_padding_small"
+        android:paddingBottom="@dimen/layout_padding_small"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        zoom:slots="10"
+        zoom:default_slot_level="zero"
+        zoom:min_slot_level="zero"
+        zoom:max_slot_level="ten" />
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -2,14 +2,17 @@
 package ktx.sovereign.camera.extension
 
 import android.graphics.ImageFormat
+import android.graphics.Rect
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.CameraCharacteristics
 import android.util.Rational
 import android.util.Size
+import android.util.SizeF
 import android.view.Surface
 import ktx.sovereign.camera.util.RectangularAreaComparator
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.math.atan
 
 private const val MAX_PREVIEW_WIDTH = 1920
 private const val MAX_PREVIEW_HEIGHT = 1080
@@ -65,6 +68,31 @@ fun CameraCharacteristics.areDimensionsSwapped(displayRotation: Int): Boolean {
         Surface.ROTATION_90, Surface.ROTATION_270 -> orientation == 0 || orientation == 180
         else -> false
     }
+}
+fun CameraCharacteristics.isCapabilitySupported(capability: Int): Boolean =
+    get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)?.contains(capability) ?: false
+fun CameraCharacteristics.getFieldOfView(): FloatArray {
+    val availableFocalLengths = get(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS) ?: floatArrayOf()
+    var focalLength = 4.5f
+    if (availableFocalLengths.isNotEmpty()) {
+        focalLength = availableFocalLengths[0]
+    }
+
+    val physicalSize = get(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE) ?: SizeF(6.32f, 4.69f)
+    val pixelArraySize = get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE) ?: Size(1, 1)
+    val activeArraySize = get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE) ?: Rect()
+    val activeSize = SizeF(
+        activeArraySize.width() / pixelArraySize.width.toFloat(),
+        activeArraySize.height() / pixelArraySize.height.toFloat()
+        )
+    return floatArrayOf(
+        Math.toDegrees(
+            2.0 * atan(physicalSize.width * activeSize.width / 2 / focalLength)
+        ).toFloat(),
+        Math.toDegrees(
+            2.0 * atan(physicalSize.height * activeSize.height / 2 / focalLength)
+        ).toFloat()
+    )
 }
 private fun selectOutputSize(sizes: List<Size>, aspectRatio: Rational): Size = if (aspectRatio.toFloat() > 1.0f) {
     sizes.firstOrNull { it.height == (it.width * 9 / 16) && it.height < 1080 } ?: sizes[0]
