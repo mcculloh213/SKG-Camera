@@ -1,5 +1,6 @@
 package ktx.sovereign.camera.ui.camera
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.ImageFormat
 import android.graphics.Rect
@@ -28,6 +29,7 @@ import kotlinx.coroutines.withContext
 import ktx.sovereign.camera.contract.CameraSpec
 import ktx.sovereign.camera.extension.getFieldOfView
 import ktx.sovereign.camera.extension.isCapabilitySupported
+import ktx.sovereign.camera.renderer.FilterRegistry
 import ktx.sovereign.camera.ui.camera.data.CameraInfo
 import ktx.sovereign.camera.ui.camera.data.saveDepth
 import javax.microedition.khronos.opengles.GL10
@@ -37,8 +39,8 @@ import kotlin.math.roundToInt
 typealias FirstFrameReceivedListener = () -> Unit
 typealias PerformanceDataAvailableListener = (Int, Int) -> Unit
 typealias JpegImageAvailableListener = (data: ByteArray, width: Int, height: Int) -> Unit
-private const val SECOND_YUV_IMAGEREADER_STREAM = true
-private const val SECOND_SURFACE_TEXTURE_STREAM = false
+private const val SECOND_YUV_IMAGEREADER_STREAM = false
+private const val SECOND_SURFACE_TEXTURE_STREAM = true
 private const val RAW_STREAM_ENABLE = true
 private const val USE_REPROCESSING = true
 private const val YUV1_IMAGEREADER_SIZE = 8
@@ -75,8 +77,9 @@ class Holder(
     private var depthCloudImageReader: ImageReader? = null
     private var yuv2ImageReader: ImageReader? = null
     private var rawImageReader: ImageReader? = null
-    private var texture: SurfaceTexture? = null
     private var surface: Surface? = null
+    private var texture: SurfaceTexture? = null
+    private var renderer: FilterRegistry? = null
     @Volatile
     private var previewSurface: Surface? = null
     @Volatile
@@ -200,6 +203,7 @@ class Holder(
         tryToStartCaptureSession()
     }
     override fun closeCamera() {
+        texture?.release()
         cameraDevice?.let { device ->
             try {
                 currentCaptureSession.abortCaptures()
@@ -354,14 +358,14 @@ class Holder(
                     }
                 }
 
+                if (updateCrop) {
+                    set(CaptureRequest.SCALER_CROP_REGION, cropArea)
+                }
+
                 if (autofocusTrigger) {
                     set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
                     currentCaptureSession.capture(build(), captureCallback, operationsHandler)
                     set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE)
-                }
-
-                if (updateCrop) {
-                    set(CaptureRequest.SCALER_CROP_REGION, cropArea)
                 }
             }
             currentCaptureSession.setRepeatingRequest(request.build(), captureCallback, operationsHandler)
@@ -441,7 +445,9 @@ class Holder(
             }, operationsHandler)
         }
     }
+    @SuppressLint("Recycle")
     private fun prepareSurfaceTextureStream() {
+        val previewSize = Size(1440, 1080)
         val textures = intArrayOf(0)
 
         GLES20.glGenTextures(1, textures, 0)

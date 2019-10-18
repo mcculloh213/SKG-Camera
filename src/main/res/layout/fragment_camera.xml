@@ -25,6 +25,8 @@
         android:id="@+id/label_zoom_out"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/layout_margin_medium"
+        android:layout_marginTop="@dimen/layout_margin_medium"
         app:text="Zoom Out"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
@@ -33,9 +35,28 @@
         android:id="@+id/label_zoom_in"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/layout_margin_medium"
         app:text="Zoom In"
         app:layout_constraintStart_toEndOf="@id/label_zoom_out"
         app:layout_constraintTop_toTopOf="parent"/>
+
+    <ktx.sovereign.core.view.MaterialLabel
+        android:id="@+id/label_freeze"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/layout_margin_medium"
+        app:text="Freeze"
+        app:layout_constraintStart_toEndOf="@id/label_zoom_in"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <ktx.sovereign.core.menu.FloatingActionMenuLayout
+        android:id="@+id/menu_camera_filters"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/layout_margin_medium"
+        app:optionsMenu="@menu/camera_filters"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/jpeg_capture"

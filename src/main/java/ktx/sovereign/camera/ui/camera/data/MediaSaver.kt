@@ -4,12 +4,15 @@ package ktx.sovereign.camera.ui.camera.data
 import android.content.ContentResolver
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
 import androidx.core.content.edit
+import ktx.sovereign.database.provider.MediaProvider
 import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -56,14 +59,15 @@ fun saveDepth(context: Context, depthCloudData: ByteBuffer): String? {
     return name.toString()
 }
 
-fun saveJpeg(context: Context, jpegData: ByteArray): String? {
+fun saveJpeg(context: Context, jpegData: ByteArray): Uri? {
     val name = StringBuilder()
+    val file: File
     try {
         val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return null // File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "OpenCamera")
         if (!dir.exists() && !dir.mkdir()) return null
         val i = getNextInt(context, "counter")
         name.append(JPEG_FILE_PREFIX).append(String.format("%05d", i)).append(JPEG_FILE_SUFFIX)
-        val file = File(dir, name.toString())
+        file = File(dir, name.toString())
         if (!file.createNewFile()) throw IOException("Failed to create file: ${file.name}")
         file.outputStream().use { stream ->
             stream.write(jpegData)
@@ -75,7 +79,7 @@ fun saveJpeg(context: Context, jpegData: ByteArray): String? {
         Log.e("MediaSaver", "${ex.message}")
         return null
     }
-    return name.toString()
+    return FileProvider.getUriForFile(context, MediaProvider.Authority, file)
 }
 
 fun insertImage(resolver: ContentResolver, file: File) {

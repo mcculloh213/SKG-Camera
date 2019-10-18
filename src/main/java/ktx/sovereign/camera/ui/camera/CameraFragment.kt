@@ -1,6 +1,7 @@
 package ktx.sovereign.camera.ui.camera
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.ImageFormat
@@ -20,6 +21,7 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Size
 import android.view.*
+import android.webkit.MimeTypeMap
 import android.widget.FrameLayout
 import androidx.fragment.app.Fragment
 import androidx.core.content.getSystemService
@@ -48,6 +50,8 @@ class CameraFragment : Fragment(), SurfaceHolder.Callback,
     private val logmar: LogMAR = LogMAR(1.0f, supremum = 1.0f)
     private lateinit var viewModel: CameraViewModel
     private var camera: Holder? = null
+    @Volatile
+    private var sendToPreview: Boolean = false
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -80,12 +84,25 @@ class CameraFragment : Fragment(), SurfaceHolder.Callback,
         }
         label_zoom_out.setOnClickListener {
             val zoom = logmar.stepDown()
-            launch { camera?.setZoom(zoom) } }
-        slot_view.decreaseZoomLevel()
+            launch { camera?.setZoom(zoom) }
+            slot_view.decreaseZoomLevel()
+        }
         label_zoom_in.setOnClickListener {
             val zoom = logmar.stepUp()
             launch { camera?.setZoom(zoom) }
             slot_view.increaseZoomLevel()
+        }
+        label_freeze.setOnClickListener {
+            sendToPreview = true
+            camera?.takePicture()
+        }
+        menu_camera_filters.apply {
+            setToggleClickListener(View.OnClickListener { close() })
+            setOnFloatingActionOptionItemSelectedListener { item ->
+                when (item.itemId) {
+                    else -> Unit
+                }
+            }
         }
         slot_view.setOnClickSlotListener {
             onClick = { slot ->
@@ -107,7 +124,6 @@ class CameraFragment : Fragment(), SurfaceHolder.Callback,
     private var isSurfaceValid: Boolean = false
     override fun surfaceCreated(holder: SurfaceHolder) {
         Log.v("Camera", "Surface Created")
-
         val previewSize = Size(1440, 1080) // camera!!.getPreviewSize()
         when (resources.configuration.orientation) {
             Configuration.ORIENTATION_LANDSCAPE -> {
@@ -152,7 +168,17 @@ class CameraFragment : Fragment(), SurfaceHolder.Callback,
             }
             setJpegImageAvailableListener { data, width, height ->
                 launch(Dispatchers.IO) {
-                    saveJpeg(ctx, data)
+                    saveJpeg(ctx, data)?.also { uri ->
+                        if (sendToPreview) {
+                            sendToPreview = false
+                            with (Intent(Intent.ACTION_VIEW)) {
+                                addCategory(Intent.CATEGORY_DEFAULT)
+                                setDataAndType(uri, "image/*")
+                                setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                startActivity(this)
+                            }
+                        }
+                    }
                 }
             }
         }
